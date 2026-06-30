@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockSense AI — Global Stock Price Predictor (India & World)</title>
+  <meta name="description" content="Machine-learning powered stock price direction predictor using Random Forest. Supports Indian stocks (NSE/BSE) and global markets including US, UK, Germany, Japan and more." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <!-- Chart.js Financial plugin for candlestick -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
+  <!-- Luxon adapter for Chart.js time axis -->
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════  NAVBAR  ══════════════════════════════ -->
+<nav class="navbar">
+  <div class="nav-brand">
+    <span class="nav-logo">📈</span>
+    <span class="nav-title">StockSense <span class="accent">AI</span></span>
+    <span class="nav-badge">🌍 Global Markets</span>
+  </div>
+  <div class="nav-right">
+    <span class="nav-status" id="serverStatus">● Live</span>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════  HERO  ════════════════════════════════ -->
+<header class="hero">
+  <div class="hero-content">
+    <h1 class="hero-title">
+      Stock Price Prediction
+      <span class="hero-subtitle">India 🇮🇳 &amp; Global 🌍 — powered by Random Forest ML</span>
+    </h1>
+    <p class="hero-desc">
+      Choose any stock — Indian (NSE/BSE) or global markets — and our
+      Random Forest model will predict the next-day price direction using
+      5 years of historical data and 40+ technical indicators.
+    </p>
+
+    <!-- Market selector tabs -->
+    <div class="market-tabs" id="marketTabs">
+      <button class="market-tab active" data-market="US" onclick="switchMarket(this,'US')">
+        🇺🇸 US Markets
+      </button>
+      <button class="market-tab" data-market="NSE" onclick="switchMarket(this,'NSE')">
+        🇮🇳 India NSE
+      </button>
+      <button class="market-tab" data-market="BSE" onclick="switchMarket(this,'BSE')">
+        🇮🇳 India BSE
+      </button>
+      <button class="market-tab" data-market="GLOBAL" onclick="switchMarket(this,'GLOBAL')">
+        🌍 Global
+      </button>
+    </div>
+
+    <!-- Search wrap (bar + autocomplete dropdown) -->
+    <div class="search-wrap">
+      <div class="search-bar" id="searchBar">
+        <span class="search-icon">🔍</span>
+        <span class="market-prefix" id="marketPrefix"></span>
+        <input
+          type="text"
+          id="tickerInput"
+          placeholder="Search any stock symbol…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <span class="suffix-badge" id="suffixBadge" style="display:none"></span>
+        <button class="btn btn-primary" id="loadBtn" onclick="loadTicker()">
+          Analyse
+        </button>
+      </div>
+
+      <!-- Autocomplete dropdown -->
+      <ul class="autocomplete-list" id="autocompleteList" style="display:none"></ul>
+    </div>
+
+    <p class="market-hint" id="marketHint">👆 Select a market above, then type a company name or symbol</p>
+
+    <!-- Quick tickers — rendered dynamically by JS -->
+    <div class="quick-tickers" id="quickTickers"></div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════  MAIN  ════════════════════════════════ -->
+<main class="main-grid" id="mainContent" style="display:none">
+
+  <!-- ─── Row 1: Prediction card + metrics cards ─── -->
+  <section class="section-row" id="predictionRow">
+
+    <!-- Prediction card -->
+    <div class="card prediction-card" id="predictionCard">
+      <div class="card-header">
+        <span class="card-icon">🤖</span>
+        <span class="card-title">RF Prediction</span>
+        <span class="card-ticker" id="cardTicker">—</span>
+      </div>
+
+      <div class="prediction-body">
+        <div class="prediction-direction" id="predDirection">—</div>
+        <div class="prediction-label">Next-day price direction</div>
+
+        <div class="confidence-wrap">
+          <div class="confidence-label">
+            Confidence
+            <span class="confidence-val" id="confVal">—%</span>
+          </div>
+          <div class="confidence-bar-bg">
+            <div class="confidence-bar-fill" id="confBar" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="pred-meta">
+          <div class="pred-meta-item">
+            <span class="pred-meta-label">Current Price</span>
+            <span class="pred-meta-val" id="currentPrice">$—</span>
+          </div>
+          <div class="pred-meta-item">
+            <span class="pred-meta-label">As of Date</span>
+            <span class="pred-meta-val" id="predDate">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Train button -->
+      <div class="train-wrap">
+        <button class="btn btn-secondary" id="trainBtn" onclick="trainModel()">
+          🚀 Train Model
+        </button>
+        <span class="train-status" id="trainStatus"></span>
+      </div>
+    </div>
+
+    <!-- Metrics cards grid -->
+    <div class="metrics-grid">
+      <div class="card metric-card">
+        <div class="metric-icon">🎯</div>
+        <div class="metric-val" id="metAccuracy">—</div>
+        <div class="metric-label">Accuracy</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-icon">📐</div>
+        <div class="metric-val" id="metPrecision">—</div>
+        <div class="metric-label">Precision</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-icon">🔁</div>
+        <div class="metric-val" id="metRecall">—</div>
+        <div class="metric-label">Recall</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-icon">⚖️</div>
+        <div class="metric-val" id="metF1">—</div>
+        <div class="metric-label">F1 Score</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-icon">📊</div>
+        <div class="metric-val" id="metRoc">—</div>
+        <div class="metric-label">ROC-AUC</div>
+      </div>
+      <div class="card metric-card">
+        <div class="metric-icon">🧪</div>
+        <div class="metric-val" id="metSamples">—</div>
+        <div class="metric-label">Test Samples</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Row 2: Price chart ─── -->
+  <section class="card chart-card full-width">
+    <div class="card-header">
+      <span class="card-icon">📉</span>
+      <span class="card-title">Price History</span>
+      <div class="period-tabs" id="periodTabs">
+        <button class="period-tab active" data-period="3mo" onclick="changePeriod(this,'3mo')">3M</button>
+        <button class="period-tab" data-period="6mo" onclick="changePeriod(this,'6mo')">6M</button>
+        <button class="period-tab" data-period="1y"  onclick="changePeriod(this,'1y')">1Y</button>
+        <button class="period-tab" data-period="2y"  onclick="changePeriod(this,'2y')">2Y</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="priceChart"></canvas>
+    </div>
+  </section>
+
+  <!-- ─── Row 3: RSI + MACD charts ─── -->
+  <section class="indicators-row">
+    <div class="card chart-card half-width">
+      <div class="card-header">
+        <span class="card-icon">💹</span>
+        <span class="card-title">RSI (14)</span>
+      </div>
+      <div class="chart-wrap chart-short">
+        <canvas id="rsiChart"></canvas>
+      </div>
+    </div>
+    <div class="card chart-card half-width">
+      <div class="card-header">
+        <span class="card-icon">📶</span>
+        <span class="card-title">MACD</span>
+      </div>
+      <div class="chart-wrap chart-short">
+        <canvas id="macdChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Row 4: Feature importance + Indicators table ─── -->
+  <section class="section-row">
+    <div class="card feat-card">
+      <div class="card-header">
+        <span class="card-icon">🌲</span>
+        <span class="card-title">Feature Importance</span>
+        <span class="card-sub">Top 15 RF features</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="featChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card indicators-card">
+      <div class="card-header">
+        <span class="card-icon">🧮</span>
+        <span class="card-title">Live Indicators</span>
+        <span class="card-sub">Latest values</span>
+      </div>
+      <div class="indicators-table" id="indicatorsTable">
+        <div class="ind-row">
+          <span class="ind-name">RSI (14)</span>
+          <span class="ind-val" id="indRsi">—</span>
+          <span class="ind-badge" id="indRsiBadge"></span>
+        </div>
+        <div class="ind-row">
+          <span class="ind-name">MACD</span>
+          <span class="ind-val" id="indMacd">—</span>
+          <span class="ind-badge" id="indMacdBadge"></span>
+        </div>
+        <div class="ind-row">
+          <span class="ind-name">MACD Signal</span>
+          <span class="ind-val" id="indMacdSig">—</span>
+          <span class="ind-badge"></span>
+        </div>
+        <div class="ind-row">
+          <span class="ind-name">BB %B</span>
+          <span class="ind-val" id="indBb">—</span>
+          <span class="ind-badge" id="indBbBadge"></span>
+        </div>
+      </div>
+
+      <!-- Confusion matrix -->
+      <div class="cm-wrap" id="cmWrap" style="display:none">
+        <div class="card-header" style="margin-top:1.5rem">
+          <span class="card-icon">🔢</span>
+          <span class="card-title">Confusion Matrix</span>
+        </div>
+        <div class="cm-grid" id="cmGrid"></div>
+        <div class="cm-labels">
+          <span>Predicted ↓ / Actual →</span>
+          <span>Down</span>
+          <span>Up</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═════════════════════════  LOADING OVERLAY  ══════════════════════════ -->
+<div class="overlay" id="loadingOverlay">
+  <div class="spinner-wrap">
+    <div class="spinner"></div>
+    <div class="spinner-text" id="spinnerText">Loading data…</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════  TOAST  ══════════════════════════════════ -->
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>
