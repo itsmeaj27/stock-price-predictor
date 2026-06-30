@@ -459,8 +459,36 @@ body::before {
 
 .pred-meta { display: flex; gap: 1rem; }
 .pred-meta-item { flex: 1; }
-.pred-meta-label { display: block; font-size: 0.72rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.2rem; }
-.pred-meta-val   { font-size: 1rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.pred-meta-label {
+  font-size: 0.75rem;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.mini-curr-btn {
+  background: rgba(99,102,241,0.15);
+  border: 1px solid rgba(99,102,241,0.3);
+  color: var(--accent);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mini-curr-btn:hover {
+  background: rgba(99,102,241,0.3);
+  color: #fff;
+}
+.pred-meta-val {
+  font-size: 1.15rem;
+ font-weight: 700; font-family: 'JetBrains Mono', monospace; }
 
 .train-wrap {
   display: flex;

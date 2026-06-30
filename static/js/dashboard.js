@@ -90,6 +90,8 @@ let searchTimeout  = null;
 
 let exchangeRateUSDINR = 83.5;
 let displayCurrency    = "AUTO";
+let currentHistoryData = null;
+let currentPredictionData = null;
 
 // ── Init ───────────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
@@ -238,11 +240,20 @@ function selectSuggestion(symbol) {
 function setCurrency(mode) {
   displayCurrency = mode;
   document.querySelectorAll(".curr-btn").forEach(b => b.classList.remove("active"));
-  document.querySelector(`.curr-btn[data-curr="${mode}"]`).classList.add("active");
+  const activeBtn = document.querySelector(`.curr-btn[data-curr="${mode}"]`);
+  if (activeBtn) activeBtn.classList.add("active");
   
   if (currentTicker) {
-    loadTicker(); // Reload with new currency
+    const currInfo = getCurrencyInfo(currentTicker);
+    if (currentHistoryData) renderHistory(currInfo);
+    if (currentPredictionData) renderPrediction(currentPredictionData, currInfo);
   }
+}
+
+function toggleInstantCurrency() {
+  const modes = ["AUTO", "USD", "INR"];
+  let nextIdx = (modes.indexOf(displayCurrency) + 1) % modes.length;
+  setCurrency(modes[nextIdx]);
 }
 
 // ── Quick pick ────────────────────────────────────────────────────
@@ -319,8 +330,15 @@ async function loadHistory(ticker, period, currInfo) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to load history for " + ticker);
 
+  currentHistoryData = data.records;
+  renderHistory(currInfo);
+  return true;
+}
+
+function renderHistory(currInfo) {
+  if (!currentHistoryData) return;
   // Convert prices
-  const records = data.records.map(r => ({
+  const records = currentHistoryData.map(r => ({
     ...r,
     open: r.open !== null ? r.open * currInfo.rate : null,
     high: r.high !== null ? r.high * currInfo.rate : null,
@@ -336,7 +354,6 @@ async function loadHistory(ticker, period, currInfo) {
   renderPriceChart(records, currInfo.sym);
   renderRsiChart(records);
   renderMacdChart(records);
-  return true;
 }
 
 // ── Prediction ────────────────────────────────────────────────────
@@ -345,6 +362,7 @@ async function tryLoadPrediction(ticker) {
   const data = await res.json();
 
   if (!res.ok) {
+    currentPredictionData = null;
     document.getElementById("predDirection").textContent = "Train model →";
     document.getElementById("predDirection").className   = "prediction-direction";
     document.getElementById("confVal").textContent       = "—%";
@@ -359,6 +377,12 @@ async function tryLoadPrediction(ticker) {
     return;
   }
 
+  currentPredictionData = data;
+  const currInfo = getCurrencyInfo(ticker);
+  renderPrediction(data, currInfo);
+}
+
+function renderPrediction(data, currInfo) {
   const dirEl = document.getElementById("predDirection");
   dirEl.textContent = data.direction;
   dirEl.className   = "prediction-direction " + (data.prediction === 1 ? "up" : "down");
@@ -368,7 +392,6 @@ async function tryLoadPrediction(ticker) {
     document.getElementById("confBar").style.width = data.confidence + "%";
   }, 100);
 
-  const currInfo = getCurrencyInfo(ticker);
   const convPrice = data.current_price * currInfo.rate;
   document.getElementById("currentPrice").textContent = currInfo.sym + convPrice.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
   
