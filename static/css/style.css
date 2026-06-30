@@ -56,7 +56,36 @@ body::before {
   z-index: 0;
 }
 
-/* ── Scrollbar ───────────────────────────────────────────────────── */
+/* ── Currency Toggle ───────────────────────────────────────────────── */
+.currency-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.curr-btn {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  color: var(--text3);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.curr-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.curr-btn.active {
+  background: rgba(99,102,241,0.15);
+  border-color: rgba(99,102,241,0.4);
+  color: #a5b4fc;
+}
+
+/* ── Search bar ──────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg2); }
 ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }

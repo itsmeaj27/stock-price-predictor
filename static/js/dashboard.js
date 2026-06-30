@@ -88,8 +88,17 @@ let featChart      = null;
 let trainingPoller = null;
 let searchTimeout  = null;
 
+let exchangeRateUSDINR = 83.5;
+let displayCurrency    = "AUTO";
+
 // ── Init ───────────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
+  // Fetch exchange rate in background
+  fetch("/api/exchange_rate")
+    .then(res => res.json())
+    .then(data => { if (data.USD_INR) exchangeRateUSDINR = data.USD_INR; })
+    .catch(err => console.error("Exchange rate fetch error", err));
+
   // Attach Enter key listener after DOM is ready
   const inputEl = document.getElementById("tickerInput");
   
@@ -179,14 +188,12 @@ function buildTicker(raw) {
 }
 
 // ── Currency symbol helper ─────────────────────────────────────────
+// Not used anymore since getCurrencyInfo replaces it, but kept for fallback
 function currencySymbol(ticker) {
-  if (ticker.endsWith(".NS") || ticker.endsWith(".BO")) return "₹";
-  if (ticker.endsWith(".L"))                            return "£";
-  if (ticker.endsWith(".DE") || ticker.endsWith(".PA") ||
-      ticker.endsWith(".SW") || ticker.endsWith(".AS")) return "€";
-  if (ticker.endsWith(".T"))                            return "¥";
-  if (ticker.endsWith(".HK"))                           return "HK$";
-  if (ticker.endsWith(".KS") || ticker.endsWith(".KQ")) return "₩";
+  const t = ticker.toUpperCase();
+  if (t.endsWith(".NS") || t.endsWith(".BO")) return "₹";
+  if (t.endsWith(".L")) return "£";
+  if (t.endsWith(".DE") || t.endsWith(".PA")) return "€";
   return "$";
 }
 
@@ -227,10 +234,40 @@ function selectSuggestion(symbol) {
   loadTicker();
 }
 
+// ── Currency Toggle ───────────────────────────────────────────────
+function setCurrency(mode) {
+  displayCurrency = mode;
+  document.querySelectorAll(".curr-btn").forEach(b => b.classList.remove("active"));
+  document.querySelector(`.curr-btn[data-curr="${mode}"]`).classList.add("active");
+  
+  if (currentTicker) {
+    loadTicker(); // Reload with new currency
+  }
+}
+
 // ── Quick pick ────────────────────────────────────────────────────
 function quickPick(ticker) {
   document.getElementById("tickerInput").value = ticker;
   loadTicker();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function getCurrencyInfo(ticker) {
+  const isINR = ticker.endsWith(".NS") || ticker.endsWith(".BO");
+  const baseSym = isINR ? "₹" : "$";
+  
+  let targetSym = baseSym;
+  let rate = 1.0;
+
+  if (displayCurrency === "USD" && isINR) {
+    targetSym = "$";
+    rate = 1.0 / exchangeRateUSDINR;
+  } else if (displayCurrency === "INR" && !isINR) {
+    targetSym = "₹";
+    rate = exchangeRateUSDINR;
+  }
+  
+  return { sym: targetSym, rate: rate };
 }
 
 // ── Period tab switch ─────────────────────────────────────────────
@@ -239,8 +276,8 @@ function changePeriod(btn, period) {
   btn.classList.add("active");
   currentPeriod = period;
   if (currentTicker) {
-    const currency = currencySymbol(currentTicker);
-    loadHistory(currentTicker, period, currency);
+    const currInfo = getCurrencyInfo(currentTicker);
+    loadHistory(currentTicker, period, currInfo);
   }
 }
 
@@ -252,7 +289,7 @@ async function loadTicker() {
   const full = buildTicker(raw);
   currentTicker = full;
 
-  const currency = currencySymbol(full);
+  const currInfo = getCurrencyInfo(full);
   const marketLabel = MARKETS[currentMarket]
     ? `${document.querySelector(".market-tab.active").textContent.trim()}`
     : "";
@@ -260,12 +297,12 @@ async function loadTicker() {
   showLoading(`Fetching ${full} data (${marketLabel})…`);
 
   try {
-    await loadHistory(full, currentPeriod, currency);
+    await loadHistory(full, currentPeriod, currInfo);
 
     document.getElementById("mainContent").style.display = "flex";
     document.getElementById("cardTicker").textContent    = full;
 
-    await tryLoadPrediction(full, currency);
+    await tryLoadPrediction(full);
     await tryLoadMetrics(full);
 
   } catch (err) {
@@ -277,19 +314,33 @@ async function loadTicker() {
 }
 
 // ── History + charts ──────────────────────────────────────────────
-async function loadHistory(ticker, period, currency = "$") {
+async function loadHistory(ticker, period, currInfo) {
   const res  = await fetch(`/api/history?ticker=${encodeURIComponent(ticker)}&period=${period}`);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to load history for " + ticker);
 
-  renderPriceChart(data.records, currency);
-  renderRsiChart(data.records);
-  renderMacdChart(data.records);
+  // Convert prices
+  const records = data.records.map(r => ({
+    ...r,
+    open: r.open !== null ? r.open * currInfo.rate : null,
+    high: r.high !== null ? r.high * currInfo.rate : null,
+    low: r.low !== null ? r.low * currInfo.rate : null,
+    close: r.close !== null ? r.close * currInfo.rate : null,
+    sma_20: r.sma_20 !== null ? r.sma_20 * currInfo.rate : null,
+    ema_20: r.ema_20 !== null ? r.ema_20 * currInfo.rate : null,
+    sma_50: r.sma_50 !== null ? r.sma_50 * currInfo.rate : null,
+    bb_high: r.bb_high !== null ? r.bb_high * currInfo.rate : null,
+    bb_low: r.bb_low !== null ? r.bb_low * currInfo.rate : null,
+  }));
+
+  renderPriceChart(records, currInfo.sym);
+  renderRsiChart(records);
+  renderMacdChart(records);
   return true;
 }
 
 // ── Prediction ────────────────────────────────────────────────────
-async function tryLoadPrediction(ticker, currency = "$") {
+async function tryLoadPrediction(ticker) {
   const res  = await fetch(`/api/predict?ticker=${encodeURIComponent(ticker)}`);
   const data = await res.json();
 
@@ -298,7 +349,10 @@ async function tryLoadPrediction(ticker, currency = "$") {
     document.getElementById("predDirection").className   = "prediction-direction";
     document.getElementById("confVal").textContent       = "—%";
     document.getElementById("confBar").style.width       = "0%";
-    document.getElementById("currentPrice").textContent  = currency + "—";
+    
+    const currInfo = getCurrencyInfo(ticker);
+    document.getElementById("currentPrice").textContent  = currInfo.sym + "—";
+    
     document.getElementById("predDate").textContent      = "—";
     document.getElementById("trainStatus").textContent   = "No model trained yet for " + ticker;
     resetIndicators();
@@ -314,7 +368,10 @@ async function tryLoadPrediction(ticker, currency = "$") {
     document.getElementById("confBar").style.width = data.confidence + "%";
   }, 100);
 
-  document.getElementById("currentPrice").textContent = currency + data.current_price.toLocaleString();
+  const currInfo = getCurrencyInfo(ticker);
+  const convPrice = data.current_price * currInfo.rate;
+  document.getElementById("currentPrice").textContent = currInfo.sym + convPrice.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  
   document.getElementById("predDate").textContent     = data.date;
   document.getElementById("trainStatus").textContent  = "";
 
@@ -378,8 +435,7 @@ function pollTrainingStatus(ticker) {
       document.getElementById("trainBtn").disabled = false;
       document.getElementById("trainStatus").textContent = "✅ Training complete!";
       showToast("✅ Model trained successfully for " + ticker, "success");
-      const currency = currencySymbol(ticker);
-      await tryLoadPrediction(ticker, currency);
+      await tryLoadPrediction(ticker);
       await tryLoadMetrics(ticker);
     } else if (data.status && data.status.startsWith("error:")) {
       clearInterval(trainingPoller);
