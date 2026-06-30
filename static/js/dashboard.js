@@ -479,15 +479,15 @@ function renderPriceChart(records, currency) {
   if (priceChart) priceChart.destroy();
   const ctx  = document.getElementById("priceChart").getContext("2d");
   const grad = ctx.createLinearGradient(0, 0, 0, 320);
-  grad.addColorStop(0, "rgba(99,102,241,0.35)");
-  grad.addColorStop(1, "rgba(99,102,241,0)");
+  grad.addColorStop(0, "rgba(59,130,246,0.25)");
+  grad.addColorStop(1, "rgba(59,130,246,0)");
 
   priceChart = new Chart(ctx, {
     type: "line",
     data: {
       labels,
       datasets: [
-        { label: "Close", data: close, borderColor: "#6366f1", backgroundColor: grad, fill: true, tension: 0.35, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5 },
+        { label: "Close", data: close, borderColor: "#3b82f6", backgroundColor: grad, fill: true, tension: 0.35, borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5 },
         { label: "SMA 20", data: sma20, borderColor: "#f59e0b", borderWidth: 1.5, fill: false, tension: 0.35, pointRadius: 0, borderDash: [4, 3] },
         { label: "SMA 50", data: sma50, borderColor: "#10b981", borderWidth: 1.5, fill: false, tension: 0.35, pointRadius: 0, borderDash: [6, 4] },
       ],
@@ -503,9 +503,9 @@ function renderRsiChart(records) {
     type: "line",
     data: {
       labels: records.map(r => r.date),
-      datasets: [{ label: "RSI 14", data: records.map(r => r.rsi_14), borderColor: "#c084fc", backgroundColor: "rgba(192,132,252,0.08)", fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0 }],
+      datasets: [{ label: "RSI 14", data: records.map(r => r.rsi_14), borderColor: "#8b5cf6", backgroundColor: "rgba(139,92,246,0.08)", fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0 }],
     },
-    options: { ...chartOptions("RSI"), scales: { ...chartOptions().scales, y: { ...chartOptions().scales?.y, min: 0, max: 100, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#64748b", font: { size: 11 } } } } },
+    options: { ...chartOptions("RSI"), scales: { ...chartOptions().scales, y: { ...chartOptions().scales?.y, min: 0, max: 100, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#94a3b8", font: { size: 11 } } } } },
   });
 }
 
@@ -530,12 +530,12 @@ function renderFeatChart(importances) {
   const labels = sorted.map(([k]) => k);
   const values = sorted.map(([, v]) => +(v * 100).toFixed(2));
   const colors = labels.map(l => {
-    if (l.includes("rsi"))               return "rgba(192,132,252,0.85)";
-    if (l.includes("macd"))              return "rgba(56,189,248,0.85)";
+    if (l.includes("rsi"))               return "rgba(139,92,246,0.85)";
+    if (l.includes("macd"))              return "rgba(14,165,233,0.85)";
     if (l.includes("sma") || l.includes("ema")) return "rgba(245,158,11,0.85)";
-    if (l.includes("bb"))                return "rgba(251,113,133,0.85)";
-    if (l.includes("volume"))            return "rgba(52,211,153,0.85)";
-    return "rgba(99,102,241,0.85)";
+    if (l.includes("bb"))                return "rgba(239,68,68,0.85)";
+    if (l.includes("volume"))            return "rgba(16,185,129,0.85)";
+    return "rgba(59,130,246,0.85)";
   });
 
   if (featChart) featChart.destroy();
@@ -577,7 +577,7 @@ function chartOptions(yLabel = "", currency = "") {
     plugins: {
       legend: { labels: { color: "#94a3b8", font: { size: 12 }, usePointStyle: true, pointStyleWidth: 10, padding: 20 } },
       tooltip: { 
-        backgroundColor: "rgba(17,24,39,0.95)", borderColor: "rgba(255,255,255,0.08)", borderWidth: 1, titleColor: "#f1f5f9", bodyColor: "#94a3b8", padding: 12, cornerRadius: 8,
+        backgroundColor: "rgba(15,23,42,0.95)", borderColor: "rgba(255,255,255,0.1)", borderWidth: 1, titleColor: "#f8fafc", bodyColor: "#cbd5e1", padding: 12, cornerRadius: 8,
         callbacks: {
           label: function(context) {
             let label = context.dataset.label || '';
@@ -593,17 +593,17 @@ function chartOptions(yLabel = "", currency = "") {
       },
     },
     scales: {
-      x: { type: "category", ticks: { color: "#64748b", font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: "rgba(255,255,255,0.04)" } },
+      x: { type: "category", ticks: { color: "#94a3b8", font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 }, grid: { color: "rgba(255,255,255,0.05)" } },
       y: { 
         ticks: { 
-          color: "#64748b", 
+          color: "#94a3b8", 
           font: { size: 11 },
           callback: function(value, index, values) {
             return currency + value;
           }
         }, 
         grid: { color: "rgba(255,255,255,0.05)" }, 
-        title: yLabel ? { display: true, text: yLabel, color: "#64748b", font: { size: 11 } } : undefined 
+        title: yLabel ? { display: true, text: yLabel, color: "#94a3b8", font: { size: 11 } } : undefined 
       },
     },
   };
