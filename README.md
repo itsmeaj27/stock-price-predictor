@@ -4,8 +4,6 @@
 
 A premium, full-stack machine learning web application that predicts next-day stock price directions using a Random Forest Classifier. It supports multi-market lookup (US, Indian NSE/BSE, and Global exchanges), technical indicator feature engineering, and a sleek dark-mode interactive dashboard.
 
-![Dashboard Preview](https://stock-price-predictor-fugv.onrender.com)
-
 ## ✨ Features
 
 - **🧠 Machine Learning Backend:** Utilizes a Random Forest algorithm to predict next-day price movements (Up/Down) based on technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands).
