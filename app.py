@@ -33,7 +33,7 @@ from model.evaluate import evaluate as rf_evaluate
 
 app = Flask(__name__)
 
-MODEL_DIR = "/tmp/saved_models"
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_models")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 # ── In-memory training status tracker ────────────────────────────────────────
@@ -152,26 +152,30 @@ def api_history():
 # --------------------------------------------------------------------------- #
 @app.route("/api/train", methods=["POST"])
 def api_train():
-    """Kick off model training synchronously for serverless."""
+    """Kick off model training in a background thread."""
     data   = request.get_json(silent=True) or {}
     ticker = data.get("ticker", "AAPL").upper().strip()
     period = data.get("period", "5y")
 
-    training_status[ticker] = "training"
-    try:
-        result = train_model(ticker, period=period)
-        training_status[ticker] = "done"
-        return jsonify({
-            "message": f"Training completed for {ticker}",
-            "status":  "done",
-            "ticker":  ticker,
-        }), 200
-    except Exception as exc:
-        training_status[ticker] = f"error:{exc}"
-        return jsonify({
-            "error": str(exc),
-            "status": "error"
-        }), 500
+    if training_status.get(ticker) == "training":
+        return jsonify({"message": f"Already training {ticker}", "status": "training"}), 202
+
+    def _train():
+        training_status[ticker] = "training"
+        try:
+            result = train_model(ticker, period=period)
+            training_status[ticker] = "done"
+        except Exception as exc:
+            training_status[ticker] = f"error:{exc}"
+
+    thread = threading.Thread(target=_train, daemon=True)
+    thread.start()
+
+    return jsonify({
+        "message": f"Training started for {ticker}",
+        "status":  "training",
+        "ticker":  ticker,
+    }), 202
 
 
 @app.route("/api/train/status")
