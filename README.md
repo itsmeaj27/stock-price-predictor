@@ -1,5 +1,7 @@
 # 📈 Stock Price Predictor
 
+**🌐 Live Demo:** [https://stock-price-predictor-fugv.onrender.com](https://stock-price-predictor-fugv.onrender.com)
+
 A premium, full-stack machine learning web application that predicts next-day stock price directions using a Random Forest Classifier. It supports multi-market lookup (US, Indian NSE/BSE, and Global exchanges), technical indicator feature engineering, and a sleek dark-mode interactive dashboard.
 
 ![Dashboard Preview](https://via.placeholder.com/1200x600.png?text=Stock+Price+Predictor+Dashboard)
