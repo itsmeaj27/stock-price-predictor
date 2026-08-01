@@ -9,4 +9,3 @@ plotly==5.22.0
 joblib==1.4.2
 requests==2.32.3
 gunicorn==22.0.0
-serverless-wsgi==3.0.2
